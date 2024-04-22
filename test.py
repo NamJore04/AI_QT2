@@ -10,6 +10,7 @@ def schedule(t):
 
 # Hàm kiểm tra thuật toán trong lớp test.py
 def main():
+    # cc
     # Khởi tạo đối tượng Problem và LocalSearchStrategy
     problem = Problem()
     strategy = LocalSearchStrategy()
