@@ -1,132 +1,107 @@
+from problem import Problem
 import random
 import math
-from problem import Problem
-
 class LocalSearchStrategy:
-    def random_restart_hill_climbing(self, problem: Problem, num_trials: int):
+    def random_restart_hill_climbing(self, problem, num_trial):
+        best_evaluation = float('-inf') 
         best_path = None
-        best_value = float('-inf')
-        
-        for _ in range(num_trials):
-            start_x = random.randint(0, problem.width - 1)
-            start_y = random.randint(0, problem.height - 1)
-            
-            path, value = self.hill_climbing(problem, start_x, start_y)
-            
-            if value > best_value:
+
+        for _ in range(num_trial):
+            current_state = problem.random_state()
+            path = []
+
+            while True:
+                neighbors = current_state.get_neighbors()
+
+                next_state = max(neighbors, key=lambda state: state.evaluation())
+                if next_state.evaluation() <= current_state.evaluation():
+                    break
+
+                current_state = next_state
+                path.append(current_state)
+
+            if current_state.evaluation() > best_evaluation:
+                best_evaluation = current_state.evaluation()
+                print(best_evaluation)
                 best_path = path
-                best_value = value
                 
         return best_path
+    
+    def schedule(self, t):
+        """Lịch trình làm nguội cho Simulated Annealing."""
+        # Bạn có thể điều chỉnh hàm lịch trình theo nhu cầu
+        return 1/(t)
 
-
-    def hill_climbing(self, problem: Problem, start_x: int, start_y: int):
-        current_x, current_y = start_x, start_y
-        path = [(current_x, current_y)]
-        current_value = problem.evaluation_function(current_x, current_y)
-        
-        max_steps = 100  # Maximum steps to avoid infinite loops
-        step_count = 0
-        
-        while step_count < max_steps:
-            neighbors = problem.get_neighbors(current_x, current_y)
-            next_state = None
-            next_value = current_value
-            
-            for nx, ny in neighbors:
-                value = problem.evaluation_function(nx, ny)
-                
-                if value > next_value:
-                    next_state = (nx, ny)
-                    next_value = value
-            
-            if next_state is None:
-                break
-            
-            current_x, current_y = next_state
-            current_value = next_value
-            path.append((current_x, current_y))
-            
-            step_count += 1
-        
-        return path, current_value
-
-
+    # testcase: (41,116)
     def simulated_annealing_search(self, problem: Problem, schedule) -> list:
-        current_x = random.randint(0, problem.width - 1)
-        current_y = random.randint(0, problem.height - 1)
-        current_value = problem.evaluation_function(current_x, current_y)
-        
-        path = [(current_x, current_y, current_value)]
+        current_state = problem.random_state()
+        path = [current_state]
         
         t = 1
-        max_steps = 1000  # Maximum steps to avoid infinite loops
-        while t <= max_steps:
+        while True:
             T = schedule(t)
-            
-            if T <= 0:
+            if T < 1e-4: #0.00001
                 break
             
-            neighbors = problem.get_neighbors(current_x, current_y)
-            next_x, next_y = random.choice(neighbors)
-            next_value = problem.evaluation_function(next_x, next_y)
+            neighbors = current_state.get_neighbors()
+            next_state = random.choice(neighbors)
+
+            #print("\nreset")
+            #print("cur", current_state.evaluation())
+            #print("next", next_state.evaluation())
             
-            delta_E = next_value - current_value
+            delta_E = next_state.evaluation() - current_state.evaluation()
+            t = t + 1
             
-            if abs(delta_E) > 1e5:  # Adjust the value according to your needs
-                delta_E = math.copysign(1e5, delta_E)
-            
-            try:
+            if delta_E > 0:
+                current_state = next_state
+                path.append(next_state)
+            else:
                 probability = math.exp(delta_E / T)
-            except OverflowError:
-                probability = 1
-            
-            probability = max(0, min(probability, 1))
-            
-            if delta_E > 0 or random.random() < probability:
-                current_x = next_x
-                current_y = next_y
-                current_value = next_value
-                path.append((current_x, current_y, current_value))
-            
-            t += 1
+                #print("delta_E", delta_E)
+                #print("T", T)
+                #print("%p", probability)
+                if (random.random() < probability):
+                    current_state = next_state
+                    path.append(next_state)
         
         return path
 
-    def local_beam_search(self, problem: Problem, k: int) -> list:
-        # Khởi tạo k trạng thái ngẫu nhiên
-        states = [(random.randint(0, problem.width - 1), random.randint(0, problem.height - 1)) for _ in range(k)]
-        
-        path = []
-        
-        max_iterations = 200  # Số lần lặp tối đa
-        iterations = 0  # Đếm số lần lặp
-        while iterations < max_iterations:
-            successors = []
-            
-            # Tìm kiếm trong các trạng thái hiện tại
+    # testcase: (41,116)
+    def local_beam_search(problem: Problem, k):
+        # Khởi tạo k trạng thái ban đầu ngẫu nhiên
+        states = [problem.random_state() for _ in range(k)]
+        iteration = 0
+        for state in states:
+            print(state)
+
+        while True:
+            next_states = []
             for state in states:
-                x, y = state
-                path.append((x, y))  # Thêm cả trạng thái (x, y) cho mục đích trực quan
-                    
-                # Tìm các hàng xóm của trạng thái hiện tại
-                neighbors = problem.get_neighbors(x, y)
-                for nx, ny in neighbors:
-                    nz = problem.evaluation_function(nx, ny)
-                    successors.append((nx, ny, nz))
+                #print(state)
+                # Lấy các trạng thái hàng xóm của state
+                neighbors = state.get_neighbors()
+                next_states.extend(neighbors)
+            
+            # Sắp xếp các trạng thái hàng xóm theo giá trị đánh giá
+            next_states.sort(key=lambda x: x.evaluation(), reverse=True)
+            
+            # Chọn ra k trạng thái tốt nhất
+            states = next_states[:k]
             
             # Kiểm tra điều kiện dừng
-            goal_states = [succ for succ in successors if problem.is_goal_state(succ[0], succ[1], succ[2])]
-            if goal_states:
-                path.append(goal_states[0])  # Chỉ giữ lại một trạng thái đích đầu tiên
-                return path
-            
-            # Chọn k trạng thái tốt nhất
-            successors.sort(key=lambda s: s[2], reverse=True)
-            states = [(succ[0], succ[1]) for succ in successors[:k]]  # Giữ lại k trạng thái tốt nhất
-            
-            iterations += 1  # Tăng số lần lặp
+            best_evaluation = states[0]
+            if best_evaluation.goal_test() or iteration >= 300:
+                break
+
+            iteration += 1
         
+        # Trả về đường đi của trạng thái tốt nhất
+        best_state = states[0]
+        path = [best_state]
+        while best_state.parent is not None:
+            best_state = best_state.parent
+            path.append(best_state)
+        
+        path.reverse()
         return path
-
-

@@ -1,38 +1,33 @@
-# Import các lớp cần thiết
 from problem import Problem
 from search import LocalSearchStrategy
 
-# Hàm lịch trình làm nguội (cho simulated annealing)
-def schedule(t):
-    """Lịch trình làm nguội cho Simulated Annealing."""
-    # Bạn có thể điều chỉnh hàm lịch trình theo nhu cầu
-    return t 
+searcher = LocalSearchStrategy()
 
-# Hàm kiểm tra thuật toán trong lớp test.py
-def main():
-    # cc
-    #ádnjanskjac
-    # Khởi tạo đối tượng Problem và LocalSearchStrategy
-    problem = Problem()
-    strategy = LocalSearchStrategy()
+def test_hill_climbing():
+    problem = Problem('monalisa.jpg')
+    best_path = searcher.random_restart_hill_climbing(problem, 5)
+    if best_path:
+        print(len(best_path))
+        problem.show(best_path)
 
-    # # Kiểm tra thuật toán Random Restart Hill Climbing
-    # num_trial = 100 # Số lần chạy thuật toán ngẫu nhiên
-    # path_rrhc = strategy.random_restart_hill_climbing(problem, num_trial)
-    # print("Random Restart Hill Climbing:")
-    # problem.draw_path(path_rrhc)
+def test_local_beam_search():
+    #problem = Problem('monalisa.jpg', state_start=(40, 0))
+    #best_path = LocalSearchStrategy.local_beam_search(problem, 5)
+    #print(best_path)
 
-    # # Kiểm tra thuật toán Simulated Annealing
-    # path_sa = strategy.simulated_annealing_search(problem, schedule)
-    # print("Simulated Annealing Search:")
-    # problem.draw_path(path_sa)
+    problem_instance = Problem(filename='monalisa.jpg', state=(40, 0))
+    path = searcher.local_beam_search(problem_instance, 1)
+    problem_instance.show(path)
 
-    # Kiểm tra thuật toán Local Beam Search
-    k = 4 # Số lượng trạng thái tối đa được duy trì tại mỗi bước thuật toán
-    path_lbs = strategy.local_beam_search(problem, k)
-    print("Local Beam Search:")
-    problem.draw_path(path_lbs)
+def test_simulated_annealing_search():
+    problem = Problem('monalisa.jpg', state=(40, 50))
+    best_path = searcher.simulated_annealing_search(problem, searcher.schedule)
+    if best_path:
+        print(len(best_path))
+        problem.show(best_path)
 
-# Chạy hàm kiểm tra
-if __name__ == "__main__":
-    main()
+
+test_hill_climbing()
+# test_local_beam_search()
+
+# test_simulated_annealing_search()
