@@ -4,77 +4,74 @@ import cv2
 import random
 
 class Problem:
-    X = None
-    Y = None
-    Z = None
-    filename = None
-
-    @classmethod
-    def load_file(cls):
-        img = cv2.imread(cls.filename, cv2.IMREAD_GRAYSCALE)
+    @staticmethod
+    def load_file(filename):
+        img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
         img = cv2.resize(img, (0, 0), fx=0.25, fy=0.25)
         img = cv2.GaussianBlur(img, (5, 5), 0)
-        h, w = img.shape
-        cls.X = np.arange(w)
-        cls.Y = np.arange(h)
-        cls.Z = img
+        return img
 
-    def __init__(self, filename, state=None, parent=None):
-        # Kiểm tra xem các thuộc tính lớp đã được khởi tạo chưa, nếu chưa thì khởi tạo
-        if Problem.X is None or Problem.Y is None or Problem.Z is None or Problem.filename != filename:
-            Problem.filename = filename
-            Problem.load_file()
+    def __init__(self, filename):
+        self.filename = filename
+        self.Z = self.load_file(filename)
+        self.max_y, self.max_x = self.Z.shape
+            #h(cột)     #w(hàng)
 
-        self.state = state
-        self.parent = parent
+    def make_random_state(self):
+        x = random.randint(0, self.max_x - 1)
+        y = random.randint(0, self.max_y - 1)
+        return x, y
 
-    def __str__(self):
-        x, y = self.state
-        z = self.evaluation()
-        return f'({x}, {y}, {z})'
+    def global_maximum_test(self, state):
+        x, y = state
+        return self.Z[y, x] == np.max(self.Z)
 
-    @staticmethod
-    def random_state():
-        max_x = len(Problem.X)
-        max_y = len(Problem.Y)
-        random_x = random.randint(0, max_x - 1)
-        random_y = random.randint(0, max_y - 1)
-        return Problem(filename=Problem.filename, state=(random_x, random_y))
+    def get_evaluation(self, state):
+        x, y = state
+        return int(self.Z[y, x])
 
-    def goal_test(self):
-        return self.evaluation() == float(np.max(Problem.Z))
-
-    def evaluation(self):
-        x, y = self.state
-        return float(Problem.Z[y, x])
-
-    def get_neighbors(self):
-        x, y = self.state
-
+    def get_neighbors(self, state):
+        x, y = state
+        moves = {"L": (0, -1), "R": (0, 1), "U": (-1, 0), "D": (1, 0)}
         neighbors = []
-        # Các bước di chuyển có thể thực hiện
-        moves = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-        
-        # Duyệt qua các hướng và kiểm tra nếu hợp lệ thì thêm vào danh sách hàng xóm
-        for dx, dy in moves:
+        for direction, (dx, dy) in moves.items():
             nx, ny = x + dx, y + dy
-            if 0 <= nx < len(Problem.X) and 0 <= ny < len(Problem.Y):
-                neighbors.append(Problem(filename=Problem.filename, state=(nx, ny), parent=self))
-        
+            if 0 <= nx < self.max_x and 0 <= ny < self.max_y:
+                neighbors.append((direction, (nx, ny)))
         return neighbors
-    
-    def show(self, path):
-        fig = plt.figure(figsize=(8, 6))
-        ax = fig.add_subplot(111, projection='3d')
-        X, Y = np.meshgrid(Problem.X, Problem.Y)
-        ax.plot_surface(X, Y, Problem.Z, rstride=1, cstride=1, cmap='viridis', edgecolor='none')
-        
-        path_array = np.array([(state.state[0], state.state[1], state.evaluation()) for state in path])
-        ax.plot(path_array[:, 0], path_array[:, 1], path_array[:, 2], 'r-', zorder=3, linewidth=0.5)
-        ax.plot(path_array[0:2, 0], path_array[0:2, 1], path_array[0:2, 2], 'b-', zorder=3, linewidth=0.5)
-        ax.plot(path_array[-2:, 0], path_array[-2:, 1], path_array[-2:, 2], 'g-', zorder=3, linewidth=0.5)
 
+    def get_previous_state(self, state, direction):
+        x, y = state
+        dx, dy = 0, 0
+        if direction == "L":
+            dx, dy = 0, 1
+        elif direction == "R":
+            dx, dy = 0, -1
+        elif direction == "U":
+            dx, dy = 1, 0
+        elif direction == "D":
+            dx, dy = -1, 0
+        
+        previous_x = x + dx
+        previous_y = y + dy
+        
+        if 0 <= previous_x < self.max_x and 0 <= previous_y < self.max_y:
+            return (previous_x, previous_y)
+        else:
+            return None
+
+    def show(self):
+        fig = plt.figure(figsize=(8, 6))
+        ax = plt.axes(projection='3d')
+        X, Y = np.meshgrid(np.arange(self.max_x), np.arange(self.max_y))
+        ax.plot_surface(X, Y, self.Z, rstride=1, cstride=1, cmap='viridis', edgecolor='none')
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        plt.show()
+
+    def draw_path(self, path):
+        ax = plt.gca()
+        path_array = np.array([(x, y, z) for (x, y, z) in path])
+        ax.plot(path_array[:, 0], path_array[:, 1], path_array[:, 2], 'r-', zorder=3, linewidth=0.5)
+        ax.plot(path_array[0:2, 0], path_array[0:2, 1], path_array[0:2, 2], 'b-', zorder=3, linewidth=0.5)
+        ax.plot(path_array[-2:, 0], path_array[-2:, 1], path_array[-2:, 2], 'g-', zorder=3, linewidth=0.5)
